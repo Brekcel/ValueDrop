@@ -1,5 +1,5 @@
 //! This crate is a helper utility for structs that need to drop using self instead of
-//! &mut self provided by [core::ops::Drop].
+//! &mut self as provided by [core::ops::Drop].
 //!
 //! This crate contains 2 things:
 //!
