@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use c_crate_sys::{init_c_data, free_c_data};
+//! use c_crate_sys::{CData, init_c_data, free_c_data};
 //! use selfdrop::{AutoValueDrop, ValueDrop};
 //!
 //! struct CWrapper {
@@ -64,6 +64,7 @@ pub struct AutoValueDrop<T: ValueDrop>(ManuallyDrop<T>);
 
 impl<T: ValueDrop> AutoValueDrop<T> {
     ///Constructs a new [AutoValueDrop] value
+    #[inline(always)]
     pub fn new(val: T) -> Self {
         Self(ManuallyDrop::new(val))
     }
@@ -71,16 +72,19 @@ impl<T: ValueDrop> AutoValueDrop<T> {
     ///Get's the [AutoValueDrop]'s value. The inner data will NOT be automatically dropped.
     /// As such, if you call this method you should either put it back into an [AutoValueDrop] or
     /// ensure that you manually call drop on it.
+    #[inline(always)]
     pub fn into_inner(mut slot: Self) -> T {
+        //Can't just take because Self implements Drop
         let mut val = unsafe { uninitialized() };
         swap(&mut slot.0, &mut val);
-        //Don't run drop on slot as it now contains uninitialized data
+        //Run forget on slot as it now contains uninitialized data
         forget(slot);
         ManuallyDrop::into_inner(val)
     }
 }
 
 impl<T: ValueDrop> Drop for AutoValueDrop<T> {
+    #[inline(always)]
     fn drop(&mut self) {
         let mut val = unsafe { uninitialized() };
         swap(&mut self.0, &mut val);
@@ -90,16 +94,21 @@ impl<T: ValueDrop> Drop for AutoValueDrop<T> {
 
 impl<T: ValueDrop> Deref for AutoValueDrop<T> {
     type Target = T;
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl<T: ValueDrop> DerefMut for AutoValueDrop<T> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
+
+unsafe impl<T: ValueDrop + Send> Send for AutoValueDrop<T> {}
+unsafe impl<T: ValueDrop + Sync> Sync for AutoValueDrop<T> {}
 
 #[cfg(test)]
 mod tests {
